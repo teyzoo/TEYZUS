@@ -1,10 +1,8 @@
-from backend.app.checker.service import (
-    check_username
-)
+from app.checker.service import check_username
 
 
 async def run_check(
-    usernames: list
+    usernames: list[str]
 ):
 
     results = []
@@ -15,6 +13,7 @@ async def run_check(
         result = await check_username(
             username
         )
+
 
         results.append(
             result
