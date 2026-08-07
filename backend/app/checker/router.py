@@ -11,7 +11,6 @@ router = APIRouter(
 )
 
 
-
 @router.post("/")
 async def checker(
     data: dict
