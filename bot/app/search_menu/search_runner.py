@@ -1,23 +1,11 @@
-from app.search_menu.generator_client import (
-    generate_usernames
-)
+async def run_check(username: str):
 
+    # временно для первого запуска
+    # подключим настоящий checker позже
 
-async def run_search(
-    length: int,
-    numbers: bool
-):
-
-    result = await generate_usernames(
-        length,
-        numbers
-    )
-
-
-    usernames = result.get(
-        "results",
-        []
-    )
-
-
-    return usernames
+    return {
+        "username": username,
+        "telegram": False,
+        "fragment": False,
+        "tme": False
+    }
