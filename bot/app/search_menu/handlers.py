@@ -19,6 +19,10 @@ from app.search_menu.check_runner import (
     run_check
 )
 
+from app.result_card.builder import (
+    build_result_card
+)
+
 
 router = Router()
 
@@ -120,7 +124,7 @@ async def start_generation(
     if not usernames:
 
         await loading.edit_text(
-            "❌ Ничего не найдено"
+            "❌ Username не найдены"
         )
 
         await state.clear()
@@ -140,33 +144,44 @@ async def start_generation(
     )
 
 
-    text = (
-        "🚀 TEYZUS AI\n\n"
-        "✅ Результаты:\n\n"
+    if not checked:
+
+        await loading.edit_text(
+            "❌ Проверка не дала результатов"
+        )
+
+        await state.clear()
+
+        return
+
+
+
+    item = checked[0]
+
+
+    username = item.get(
+        "username",
+        "unknown"
     )
 
 
-    for item in checked[:10]:
-
-        username = item.get(
-            "username"
-        )
-
-        status = (
-            "⚡ Свободен"
-            if item.get("available")
-            else "❌ Занят"
-        )
+    available = item.get(
+        "available",
+        False
+    )
 
 
-        text += (
-            f"@{username}\n"
-            f"{status}\n\n"
-        )
+    card, keyboard = build_result_card(
+        username=username,
+        available=available,
+        score=9.5,
+        price="$500-$700"
+    )
 
 
     await loading.edit_text(
-        text
+        card,
+        reply_markup=keyboard
     )
 
 
