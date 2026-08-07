@@ -18,11 +18,34 @@ from app.search.service import (
 from app.search.enrichment import enrich_username
 from app.search.checker import check_username
 
+from app.limits.service import consume_search
+from app.premium.models import PremiumSubscription
+
 
 router = APIRouter(
     prefix="/search",
     tags=["Search"]
 )
+
+
+def check_premium(
+    db: Session,
+    telegram_id: str
+):
+
+    subscription = (
+        db.query(PremiumSubscription)
+        .filter(
+            PremiumSubscription.telegram_id
+            == telegram_id
+        )
+        .first()
+    )
+
+    return bool(
+        subscription
+        and subscription.active
+    )
 
 
 @router.post(
@@ -33,6 +56,27 @@ def search_username(
     request: SearchRequest,
     db: Session = Depends(get_database)
 ):
+
+    premium = check_premium(
+        db,
+        request.telegram_id
+    )
+
+
+    allowed, remaining = consume_search(
+        db,
+        request.telegram_id,
+        premium
+    )
+
+
+    if not allowed:
+
+        raise HTTPException(
+            status_code=429,
+            detail="Search limit reached"
+        )
+
 
     normalized = normalize_username(
         request.query
@@ -67,22 +111,15 @@ def search_username(
 
 
         results.append({
-
             **check,
-
             **analysis
-
         })
 
 
     search_record = SearchQuery(
-
         telegram_id=request.telegram_id,
-
         query=normalized,
-
         results_count=len(results)
-
     )
 
 
@@ -92,13 +129,8 @@ def search_username(
 
 
     return SearchResponse(
-
         query=request.query,
-
         normalized_query=normalized,
-
         results=results,
-
-        remaining_searches=None
-
+        remaining_searches=remaining
     )
