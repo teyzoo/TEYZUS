@@ -4,6 +4,7 @@ from aiogram.fsm.context import FSMContext
 
 from app.states.search import SearchState
 from app.search.client import search_username
+from app.cards.builder import build_username_card
 
 
 router = Router()
@@ -26,20 +27,40 @@ async def process_search(
     )
 
 
-    text = "🔎 TEYZUS AI Search\n\n"
-
-
-    for item in result.get(
+    results = result.get(
         "results",
         []
-    ):
+    )
 
-        text += (
-            f"@{item['username']}\n"
-            f"⏳ {item['status']}\n\n"
+
+    if not results:
+
+        await message.answer(
+            "❌ Username не найден"
         )
+
+        return
+
+
+    first = results[0]
+
+
+    card = build_username_card(
+        username=first.get(
+            "username"
+        ),
+        ai=first.get(
+            "ai_score"
+        ),
+        price_min=first.get(
+            "estimated_price_min"
+        ),
+        price_max=first.get(
+            "estimated_price_max"
+        )
+    )
 
 
     await message.answer(
-        text
+        card
     )
