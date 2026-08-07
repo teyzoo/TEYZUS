@@ -5,7 +5,7 @@ async def run_check(username: str) -> Dict:
     """
     Запускает проверку username.
 
-    Позже сюда подключается:
+    Подключаем:
     - Telegram checker
     - Fragment checker
     - T.me checker
