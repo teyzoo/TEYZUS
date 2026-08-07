@@ -12,8 +12,10 @@ from app.limits.router import router as limits_router
 from app.ai.router import router as ai_router
 from app.pricing.router import router as pricing_router
 from app.results.router import router as results_router
-
 from app.generator.router import router as generator_router
+
+from app.checker.router import router as checker_router
+
 
 
 Base.metadata.create_all(
@@ -25,6 +27,7 @@ app = FastAPI(
     title=settings.APP_NAME,
     version=settings.VERSION
 )
+
 
 
 app.include_router(
@@ -63,6 +66,11 @@ app.include_router(
     generator_router
 )
 
+app.include_router(
+    checker_router
+)
+
+
 
 @app.get("/")
 def home():
@@ -72,13 +80,11 @@ def home():
         "status": "online",
         "modules": [
             "users",
-            "referrals",
             "premium",
             "search",
-            "limits",
+            "generator",
+            "checker",
             "ai",
-            "pricing",
-            "results",
-            "generator"
+            "pricing"
         ]
     }
