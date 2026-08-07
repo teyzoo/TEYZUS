@@ -3,6 +3,7 @@ import asyncio
 from aiogram import Bot, Dispatcher
 
 from app.config import settings
+from app.handlers.start import router
 
 
 bot = Bot(
@@ -12,10 +13,18 @@ bot = Bot(
 dp = Dispatcher()
 
 
+dp.include_router(
+    router
+)
+
+
 async def main():
+
     print("TEYZUS Bot started")
 
-    await dp.start_polling(bot)
+    await dp.start_polling(
+        bot
+    )
 
 
 if __name__ == "__main__":
