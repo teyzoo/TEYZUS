@@ -1,5 +1,5 @@
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, declarative_base
 
 from app.config import settings
 
@@ -15,9 +15,14 @@ SessionLocal = sessionmaker(
 )
 
 
+Base = declarative_base()
+
+
 def get_database():
     db = SessionLocal()
+
     try:
         yield db
+
     finally:
         db.close()
