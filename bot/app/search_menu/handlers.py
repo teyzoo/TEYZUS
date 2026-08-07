@@ -7,16 +7,16 @@ from app.search_menu.keyboards import (
     number_mode
 )
 
-from app.search_menu.states import (
-    SearchMenuState
-)
-
 from app.search_loading.animation import (
     run_search_animation
 )
 
 from app.search_menu.search_runner import (
     run_search
+)
+
+from app.search_menu.check_runner import (
+    run_check
 )
 
 
@@ -107,7 +107,7 @@ async def start_generation(
 
     await run_search_animation(
         loading,
-        f"{length}_letters"
+        "username"
     )
 
 
@@ -120,7 +120,7 @@ async def start_generation(
     if not usernames:
 
         await loading.edit_text(
-            "❌ Username не найдены"
+            "❌ Ничего не найдено"
         )
 
         await state.clear()
@@ -128,16 +128,40 @@ async def start_generation(
         return
 
 
-    text = (
-        "🚀 TEYZUS AI\n\n"
-        "✅ Найдены варианты:\n\n"
+
+    await loading.edit_text(
+        "🔍 Проверяю найденные username...\n\n"
+        "Telegram + Fragment + t.me"
     )
 
 
-    for username in usernames[:10]:
+    checked = await run_check(
+        usernames
+    )
+
+
+    text = (
+        "🚀 TEYZUS AI\n\n"
+        "✅ Результаты:\n\n"
+    )
+
+
+    for item in checked[:10]:
+
+        username = item.get(
+            "username"
+        )
+
+        status = (
+            "⚡ Свободен"
+            if item.get("available")
+            else "❌ Занят"
+        )
+
 
         text += (
             f"@{username}\n"
+            f"{status}\n\n"
         )
 
 
