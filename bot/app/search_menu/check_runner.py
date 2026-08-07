@@ -1,23 +1,22 @@
-from app.checker.service import check_username
+from typing import Dict
 
 
-async def run_check(
-    usernames: list[str]
-):
+async def run_check(username: str) -> Dict:
+    """
+    Запускает проверку username.
 
-    results = []
+    Позже сюда подключается:
+    - Telegram checker
+    - Fragment checker
+    - T.me checker
+    - дополнительные источники
+    """
 
+    result = {
+        "username": username,
+        "telegram": False,
+        "fragment": False,
+        "tme": False
+    }
 
-    for username in usernames:
-
-        result = await check_username(
-            username
-        )
-
-
-        results.append(
-            result
-        )
-
-
-    return results
+    return result
