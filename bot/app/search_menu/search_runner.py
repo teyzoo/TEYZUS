@@ -1,22 +1,27 @@
 from typing import Dict
 
+from app.search_menu.check_runner import run_check
 
-async def run_check(username: str) -> Dict:
+
+async def run_search(username: str) -> Dict:
     """
-    Запускает проверку username.
+    Главный поиск username.
 
-    Позже сюда подключается:
-    - Telegram checker
-    - Fragment checker
-    - T.me checker
+    Запускает:
+    - checker
     - дополнительные источники
+    - обработку результата
+
+    Позже сюда можно добавить:
+    - AI анализ
+    - scoring
+    - premium проверки
+    - историю поиска
     """
 
-    result = {
-        "username": username,
-        "telegram": False,
-        "fragment": False,
-        "tme": False
-    }
+    result = await run_check(username)
 
-    return result
+    return {
+        "username": username,
+        "result": result
+    }
