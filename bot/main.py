@@ -22,6 +22,11 @@ async def main():
     )
 
 
+    print(
+        "🚀 TEYZUS Bot started"
+    )
+
+
     await dp.start_polling(
         bot
     )
