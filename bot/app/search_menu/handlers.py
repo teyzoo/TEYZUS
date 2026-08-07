@@ -15,14 +15,17 @@ from app.search_loading.animation import (
     run_search_animation
 )
 
+from app.search_menu.search_runner import (
+    run_search
+)
+
 
 router = Router()
 
 
 
 @router.message(
-    lambda m:
-    m.text == "🔎 Поиск"
+    lambda m: m.text == "🔎 Поиск"
 )
 async def open_search(
     message: Message
@@ -37,8 +40,7 @@ async def open_search(
 
 
 @router.callback_query(
-    lambda c:
-    c.data in [
+    lambda c: c.data in [
         "search_5",
         "search_6"
     ]
@@ -48,11 +50,10 @@ async def choose_length(
     state: FSMContext
 ):
 
-    length = (
-        5
-        if callback.data == "search_5"
-        else 6
-    )
+    length = 5
+
+    if callback.data == "search_6":
+        length = 6
 
 
     await state.update_data(
@@ -71,8 +72,7 @@ async def choose_length(
 
 
 @router.callback_query(
-    lambda c:
-    c.data in [
+    lambda c: c.data in [
         "letters_only",
         "with_numbers"
     ]
@@ -92,9 +92,7 @@ async def start_generation(
 
 
     numbers = (
-        callback.data
-        ==
-        "with_numbers"
+        callback.data == "with_numbers"
     )
 
 
@@ -113,9 +111,38 @@ async def start_generation(
     )
 
 
+    usernames = await run_search(
+        length,
+        numbers
+    )
+
+
+    if not usernames:
+
+        await loading.edit_text(
+            "❌ Username не найдены"
+        )
+
+        await state.clear()
+
+        return
+
+
+    text = (
+        "🚀 TEYZUS AI\n\n"
+        "✅ Найдены варианты:\n\n"
+    )
+
+
+    for username in usernames[:10]:
+
+        text += (
+            f"@{username}\n"
+        )
+
+
     await loading.edit_text(
-        "✅ Генерация завершена\n\n"
-        "Подготавливаю результаты..."
+        text
     )
 
 
