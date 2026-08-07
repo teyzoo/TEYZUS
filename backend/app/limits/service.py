@@ -5,8 +5,8 @@ from sqlalchemy.orm import Session
 from app.limits.models import SearchLimit
 
 
-FREE_DAILY_LIMIT = 3
-PREMIUM_DAILY_LIMIT = 100
+FREE_DAILY_LIMIT = 5
+PREMIUM_DAILY_LIMIT = None
 
 
 def get_search_limit(
@@ -42,18 +42,15 @@ def get_search_limit(
         db.commit()
         db.refresh(limit)
 
-    daily_limit = (
-        PREMIUM_DAILY_LIMIT
-        if premium
-        else FREE_DAILY_LIMIT
-    )
+    if premium:
+        return limit, PREMIUM_DAILY_LIMIT, None
 
     remaining = max(
-        daily_limit - limit.used,
+        FREE_DAILY_LIMIT - limit.used,
         0
     )
 
-    return limit, daily_limit, remaining
+    return limit, FREE_DAILY_LIMIT, remaining
 
 
 def consume_search(
@@ -67,6 +64,12 @@ def consume_search(
         premium
     )
 
+    if premium:
+        limit.used += 1
+        db.commit()
+
+        return True, None
+
     if remaining <= 0:
         return False, 0
 
@@ -74,4 +77,4 @@ def consume_search(
 
     db.commit()
 
-    return True, daily_limit - limit.used
+    return True, FREE_DAILY_LIMIT - limit.used
