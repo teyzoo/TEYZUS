@@ -7,7 +7,13 @@ from app.search_menu.keyboards import (
     number_mode
 )
 
-from app.search_menu.states import SearchMenuState
+from app.search_menu.states import (
+    SearchMenuState
+)
+
+from app.search_loading.animation import (
+    run_search_animation
+)
 
 
 router = Router()
@@ -43,9 +49,9 @@ async def choose_length(
 ):
 
     length = (
-        "5"
+        5
         if callback.data == "search_5"
-        else "6"
+        else 6
     )
 
 
@@ -66,21 +72,51 @@ async def choose_length(
 
 @router.callback_query(
     lambda c:
-    c.data == "search_dictionary"
+    c.data in [
+        "letters_only",
+        "with_numbers"
+    ]
 )
-async def dictionary_start(
+async def start_generation(
     callback: CallbackQuery,
     state: FSMContext
 ):
 
-    await state.set_state(
-        SearchMenuState.waiting_dictionary_word
+    data = await state.get_data()
+
+
+    length = data.get(
+        "length",
+        5
     )
 
 
-    await callback.message.answer(
-        "📖 Введите слово для словаря:"
+    numbers = (
+        callback.data
+        ==
+        "with_numbers"
     )
 
 
     await callback.answer()
+
+
+    loading = await callback.message.answer(
+        "🚀 TEYZUS AI\n\n"
+        "🔎 Ищу юзернейм..."
+    )
+
+
+    await run_search_animation(
+        loading,
+        f"{length}_letters"
+    )
+
+
+    await loading.edit_text(
+        "✅ Генерация завершена\n\n"
+        "Подготавливаю результаты..."
+    )
+
+
+    await state.clear()
