@@ -1,7 +1,13 @@
 from typing import Dict, Any
-from app.checker.telegram import check_telegram
-from app.checker.fragment import check_fragment
-from app.checker.tme import check_tme
+from app.checker.telegram import (
+    check_telegram
+)
+from app.checker.fragment import (
+    check_fragment
+)
+from app.checker.tme import (
+    check_tme
+)
 async def check_username(
     username: str
 ) -> Dict[str, Any]:
@@ -9,6 +15,7 @@ async def check_username(
         str(username)
         .strip()
         .lstrip("@")
+        .lower()
     )
     if not username:
         return {
@@ -32,50 +39,56 @@ async def check_username(
     telegram = await check_telegram(
         username
     )
-    tme = await check_tme(
-        username
-    )
     fragment = await check_fragment(
         username
     )
+    tme = await check_tme(
+        username
+    )
+    # t.me теперь просто отражает
+    # результат Telegram-проверки.
+    tme = {
+        "username": username,
+        "available": (
+            telegram.get("taken") is False
+        ),
+        "checked": (
+            telegram.get("checked") is True
+        ),
+        "status": telegram.get("status")
+    }
     telegram_checked = (
         telegram.get("checked") is True
-    )
-    tme_checked = (
-        tme.get("checked") is True
     )
     telegram_free = (
         telegram.get("taken") is False
     )
-    tme_free = (
-        tme.get("available") is True
-    )
-    # Fragment пока не блокирует результат,
-    # потому что реальной проверки Fragment API
-    # ещё нет.
+    # Fragment пока НЕ является
+    # подтверждённой проверкой.
     fragment_checked = (
         fragment.get("checked") is True
     )
     fragment_collectible = (
         fragment.get("collectible") is True
     )
+    # Главная проверка доступности:
+    #
+    # Telegram должен подтвердить,
+    # что username не занят.
+    #
+    # Fragment пока не блокирует результат,
+    # потому что его реальная проверка
+    # ещё не подключена.
     available = (
         telegram_checked
-        and tme_checked
         and telegram_free
-        and tme_free
         and not fragment_collectible
-    )
-    checked = (
-        telegram_checked
-        and tme_checked
     )
     return {
         "username": username,
         "telegram": telegram,
-        "tme": tme,
         "fragment": fragment,
+        "tme": tme,
         "available": available,
-        "checked": checked,
-        "fragment_checked": fragment_checked
+        "checked": telegram_checked
     }
