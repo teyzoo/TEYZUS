@@ -8,7 +8,16 @@ async def run_search(
 ) -> List[str]:
     """
     Запускает генерацию username через backend.
-    Возвращает список username для дальнейшей проверки.
+    Backend возвращает:
+        {
+            "results": [...]
+        }
+    Возвращаем:
+        [
+            "username1",
+            "username2",
+            ...
+        ]
     """
     result = await generate_usernames(
         length=length,
@@ -16,24 +25,11 @@ async def run_search(
     )
     if not result:
         return []
-    # Backend может вернуть непосредственно список:
-    #
-    # [
-    #     "username1",
-    #     "username2"
-    # ]
-    #
     if isinstance(result, list):
         usernames = result
-    # Или объект:
-    #
-    # {
-    #     "usernames": [...]
-    # }
-    #
     elif isinstance(result, dict):
         usernames = result.get(
-            "usernames",
+            "results",
             []
         )
     else:
