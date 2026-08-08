@@ -7,10 +7,18 @@ from app.config import settings
 # ============================================================
 # ROUTERS
 # ============================================================
-# Основной поиск TEYZUS
-from app.search_menu.handlers import router as search_router
-# Старт / регистрация пользователя
-from app.handlers.start import router as start_router
+# Поиск username
+from app.search_menu.handlers import (
+    router as search_router
+)
+# Главное меню с inline-кнопками
+from app.keyboards.menu import (
+    router as menu_router
+)
+# Команда /start
+from app.handlers.start import (
+    router as start_router
+)
 # ============================================================
 # FASTAPI
 # ============================================================
@@ -22,12 +30,12 @@ app = FastAPI(
 async def health_check():
     return {
         "status": "ok",
-        "service": "TEYZUS Bot",
+        "service": "TEYZUS Bot"
     }
 @app.get("/health")
 async def health():
     return {
-        "status": "healthy",
+        "status": "healthy"
     }
 # ============================================================
 # BOT
@@ -37,29 +45,32 @@ async def run_bot():
         token=settings.BOT_TOKEN
     )
     dp = Dispatcher()
-    # --------------------------------------------------------
-    # ВАЖНЫЙ ПОРЯДОК
-    # --------------------------------------------------------
+    # ========================================================
+    # ПОРЯДОК ROUTER
+    # ========================================================
     #
     # Сначала поиск.
-    # Потом общий start_handler из handlers/start.py.
+    # Затем inline-меню.
+    # Последним /start.
     #
-    # start_handler содержит:
+    # В start.py НЕ должно быть:
     #
-    #     @router.message()
+    # @router.message()
     #
-    # поэтому он является catch-all обработчиком.
-    #
-    # Если поставить его первым, он может перехватывать
-    # обычные сообщения до того, как их обработает поиск.
-    # --------------------------------------------------------
+    # Используем только CommandStart().
+    # ========================================================
     dp.include_router(
         search_router
     )
     dp.include_router(
+        menu_router
+    )
+    dp.include_router(
         start_router
     )
-    print("🚀 TEYZUS Bot started")
+    print(
+        "🚀 TEYZUS Bot started"
+    )
     try:
         await dp.start_polling(
             bot
@@ -80,35 +91,35 @@ async def main():
         app=app,
         host="0.0.0.0",
         port=port,
-        log_level="info",
+        log_level="info"
     )
     server = uvicorn.Server(
         config
     )
-    # Запускаем Telegram Bot и FastAPI одновременно.
+    # Telegram bot
     bot_task = asyncio.create_task(
         run_bot()
     )
+    # FastAPI / Render health server
     server_task = asyncio.create_task(
         server.serve()
     )
     done, pending = await asyncio.wait(
         {
             bot_task,
-            server_task,
+            server_task
         },
-        return_when=asyncio.FIRST_COMPLETED,
+        return_when=asyncio.FIRST_COMPLETED
     )
-    # Останавливаем оставшуюся задачу,
-    # если одна из основных задач завершилась.
+    # Если одна задача остановилась,
+    # останавливаем вторую.
     for task in pending:
         task.cancel()
     await asyncio.gather(
         *pending,
-        return_exceptions=True,
+        return_exceptions=True
     )
-    # Если задача завершилась с ошибкой —
-    # не скрываем её от Render.
+    # Не скрываем ошибки.
     for task in done:
         if task.cancelled():
             continue
