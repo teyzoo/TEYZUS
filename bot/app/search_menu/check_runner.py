@@ -1,57 +1,70 @@
-from typing import Dict, Any, List
-import os
-import aiohttp
-BACKEND_URL = os.getenv(
-    "BACKEND_URL",
-    "http://localhost:8000"
-).rstrip("/")
-TIMEOUT = aiohttp.ClientTimeout(total=20)
+from typing import Dict, Any, List, Callable, Awaitable
+from app.checker.service import check_username
 async def run_check(
-    usernames: List[str]
+    usernames: List[str],
+    progress_callback: Callable[
+        [str, int, int],
+        Awaitable[None]
+    ] | None = None
 ) -> List[Dict[str, Any]]:
     """
-    Проверяет список username через BACKEND.
-    ВАЖНО:
-    Бот не импортирует backend/app/checker напрямую.
-    Проверка выполняется через HTTP API:
-        POST /checker/
+    Проверяет список username по одному.
+    progress_callback получает:
+        username
+        current
+        total
+    Это позволяет показывать пользователю,
+    какой именно username сейчас проверяется.
     """
     if not usernames:
         return []
     results = []
-    async with aiohttp.ClientSession(
-        timeout=TIMEOUT
-    ) as session:
-        for username in usernames:
-            username = str(
+    total = len(usernames)
+    for index, username in enumerate(
+        usernames,
+        start=1
+    ):
+        username = (
+            str(username)
+            .strip()
+            .lstrip("@")
+        )
+        if not username:
+            continue
+        if progress_callback:
+            await progress_callback(
+                username,
+                index,
+                total
+            )
+        try:
+            result = await check_username(
                 username
-            ).strip().lstrip("@")
-            if not username:
-                continue
-            try:
-                async with session.post(
-                    f"{BACKEND_URL}/checker/",
-                    json={
-                        "username": username
-                    }
-                ) as response:
-                    if response.status >= 400:
-                        results.append({
-                            "username": username,
-                            "available": False,
-                            "error": (
-                                f"Backend HTTP "
-                                f"{response.status}"
-                            )
-                        })
-                        continue
-                    data = await response.json()
-                    if isinstance(data, dict):
-                        results.append(data)
-            except Exception as exc:
-                results.append({
+            )
+            if result:
+                results.append(
+                    result
+                )
+        except Exception as exc:
+            results.append(
+                {
                     "username": username,
                     "available": False,
+                    "checked": False,
+                    "telegram": {
+                        "taken": None,
+                        "checked": False
+                    },
+                    "fragment": {
+                        "collectible": None,
+                        "price": None,
+                        "checked": False
+                    },
+                    "tme": {
+                        "available": None,
+                        "checked": False
+                    },
                     "error": str(exc)
-                })
+                }
+            )
     return results
