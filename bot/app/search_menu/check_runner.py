@@ -1,22 +1,11 @@
 import asyncio
-import logging
-import os
-from typing import Dict, Any
-import aiohttp
-logger = logging.getLogger(__name__)
-BACKEND_URL = os.getenv(
-    "BACKEND_URL",
-    "http://localhost:8000"
-).rstrip("/")
-TIMEOUT = aiohttp.ClientTimeout(
-    total=3,
-    connect=1,
-    sock_connect=1,
-    sock_read=2
+from typing import Any, Dict, List
+from app.search_menu.checker_client import (
+    check_username
 )
-async def check_username(
-    username: str,
-    session: aiohttp.ClientSession
+MAX_CONCURRENT_CHECKS = 100
+async def _check_one(
+    username: str
 ) -> Dict[str, Any] | None:
     username = (
         str(username)
@@ -26,38 +15,54 @@ async def check_username(
     )
     if not username:
         return None
-    url = f"{BACKEND_URL}/checker/"
     try:
-        async with session.post(
-            url,
-            json={
-                "username": username
-            }
-        ) as response:
-            if response.status != 200:
-                logger.error(
-                    "Checker HTTP %s for @%s",
-                    response.status,
-                    username
-                )
-                return None
-            return await response.json()
-    except asyncio.TimeoutError:
-        logger.warning(
-            "Checker timeout for @%s",
+        result = await check_username(
             username
         )
-        return None
-    except aiohttp.ClientError as exc:
-        logger.warning(
-            "Checker connection error for @%s: %s",
-            username,
-            exc
-        )
-        return None
+        if not result:
+            return None
+        return result
     except Exception as exc:
-        logger.exception(
-            "Checker error for @%s",
-            username
+        return {
+            "username": username,
+            "available": False,
+            "checked": False,
+            "error": str(exc)
+        }
+async def run_check(
+    usernames: List[str]
+) -> List[Dict[str, Any]]:
+    if not usernames:
+        return []
+    normalized = list(
+        dict.fromkeys(
+            str(username)
+            .strip()
+            .lstrip("@")
+            .lower()
+            for username in usernames
+            if username
         )
-        return None
+    )
+    semaphore = asyncio.Semaphore(
+        MAX_CONCURRENT_CHECKS
+    )
+    async def limited_check(
+        username: str
+    ):
+        async with semaphore:
+            return await _check_one(
+                username
+            )
+    results = await asyncio.gather(
+        *[
+            limited_check(username)
+            for username in normalized
+        ],
+        return_exceptions=False
+    )
+    return [
+        result
+        for result in results
+        if result is not None
+    ]
