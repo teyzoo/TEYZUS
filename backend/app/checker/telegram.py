@@ -12,6 +12,7 @@ async def check_telegram(
         str(username)
         .strip()
         .lstrip("@")
+        .lower()
     )
     if not username:
         return {
@@ -21,11 +22,12 @@ async def check_telegram(
             "error": "username_required"
         }
     # Telegram username:
-    # минимум 5 символов,
-    # максимум 32,
-    # начинается с буквы,
-    # только A-Z, 0-9 и _.
-    if not USERNAME_RE.fullmatch(username):
+    # 5–32 символа
+    # начинается с буквы
+    # A-Z / 0-9 / _
+    if not USERNAME_RE.fullmatch(
+        username
+    ):
         return {
             "username": username,
             "taken": True,
@@ -35,7 +37,10 @@ async def check_telegram(
         }
     url = f"https://t.me/{username}"
     timeout = aiohttp.ClientTimeout(
-        total=3
+        total=3,
+        connect=1,
+        sock_connect=1,
+        sock_read=2
     )
     try:
         async with aiohttp.ClientSession(
@@ -52,18 +57,20 @@ async def check_telegram(
                 allow_redirects=True
             ) as response:
                 status = response.status
-                if status == 404:
-                    return {
-                        "username": username,
-                        "taken": False,
-                        "checked": True,
-                        "valid": True,
-                        "status": status
-                    }
+                # Страница username существует.
                 if status == 200:
                     return {
                         "username": username,
                         "taken": True,
+                        "checked": True,
+                        "valid": True,
+                        "status": status
+                    }
+                # Telegram не нашёл публичный username.
+                if status == 404:
+                    return {
+                        "username": username,
+                        "taken": False,
                         "checked": True,
                         "valid": True,
                         "status": status
