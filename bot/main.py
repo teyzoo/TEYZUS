@@ -4,7 +4,13 @@ import uvicorn
 from fastapi import FastAPI
 from aiogram import Bot, Dispatcher
 from app.config import settings
-from app.search_menu.handlers import router
+# ============================================================
+# ROUTERS
+# ============================================================
+# Основной поиск TEYZUS
+from app.search_menu.handlers import router as search_router
+# Старт / регистрация пользователя
+from app.handlers.start import router as start_router
 # ============================================================
 # FASTAPI
 # ============================================================
@@ -31,9 +37,28 @@ async def run_bot():
         token=settings.BOT_TOKEN
     )
     dp = Dispatcher()
-    # Подключаем существующий роутер.
-    # Ничего из текущей логики бота не удаляем.
-    dp.include_router(router)
+    # --------------------------------------------------------
+    # ВАЖНЫЙ ПОРЯДОК
+    # --------------------------------------------------------
+    #
+    # Сначала поиск.
+    # Потом общий start_handler из handlers/start.py.
+    #
+    # start_handler содержит:
+    #
+    #     @router.message()
+    #
+    # поэтому он является catch-all обработчиком.
+    #
+    # Если поставить его первым, он может перехватывать
+    # обычные сообщения до того, как их обработает поиск.
+    # --------------------------------------------------------
+    dp.include_router(
+        search_router
+    )
+    dp.include_router(
+        start_router
+    )
     print("🚀 TEYZUS Bot started")
     try:
         await dp.start_polling(
@@ -57,7 +82,10 @@ async def main():
         port=port,
         log_level="info",
     )
-    server = uvicorn.Server(config)
+    server = uvicorn.Server(
+        config
+    )
+    # Запускаем Telegram Bot и FastAPI одновременно.
     bot_task = asyncio.create_task(
         run_bot()
     )
@@ -71,17 +99,25 @@ async def main():
         },
         return_when=asyncio.FIRST_COMPLETED,
     )
+    # Останавливаем оставшуюся задачу,
+    # если одна из основных задач завершилась.
     for task in pending:
         task.cancel()
     await asyncio.gather(
         *pending,
         return_exceptions=True,
     )
+    # Если задача завершилась с ошибкой —
+    # не скрываем её от Render.
     for task in done:
-        if not task.cancelled():
-            exception = task.exception()
-            if exception:
-                raise exception
+        if task.cancelled():
+            continue
+        exception = task.exception()
+        if exception:
+            raise exception
+# ============================================================
+# ENTRY POINT
+# ============================================================
 if __name__ == "__main__":
     asyncio.run(
         main()
