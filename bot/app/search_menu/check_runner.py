@@ -1,81 +1,58 @@
-import logging
-import os
-from typing import Dict, Any, List
-import aiohttp
-logger = logging.getLogger(__name__)
-# ============================================================
-# BACKEND
-# ============================================================
-BACKEND_URL = os.getenv(
-    "BACKEND_URL",
-    "http://localhost:8000"
-).rstrip("/")
-# ============================================================
-# HTTP
-# ============================================================
-TIMEOUT = aiohttp.ClientTimeout(
-    total=5
+from typing import List
+
+from app.search_menu.generator_client import (
+    generate_usernames
 )
-# ============================================================
-# CHECK RUNNER
-# ============================================================
-async def run_check(
-    usernames: List[str]
-) -> List[Dict[str, Any]]:
-    """
-    Проверяет список username через BACKEND.
-    Backend сам выполняет:
-    - Telegram checker
-    - Fragment checker
-    - t.me checker
-    Бот не дублирует checker-логику.
-    """
-    if not usernames:
+
+
+async def run_search(
+    length: int,
+    numbers: bool
+) -> List[str]:
+
+    result = await generate_usernames(
+        length=length,
+        numbers=numbers
+    )
+
+    if not result:
         return []
-    results = []
-    async with aiohttp.ClientSession(
-        timeout=TIMEOUT
-    ) as session:
-        for username in usernames:
-            username = str(
+
+    if isinstance(result, dict):
+        usernames = result.get(
+            "results",
+            result.get(
+                "usernames",
+                []
+            )
+        )
+    elif isinstance(result, list):
+        usernames = result
+    else:
+        return []
+
+    normalized = []
+
+    for username in usernames:
+
+        if not username:
+            continue
+
+        username = (
+            str(username)
+            .strip()
+            .lstrip("@")
+        )
+
+        if username:
+            normalized.append(
                 username
-            ).strip().lstrip("@")
-            if not username:
-                continue
-            try:
-                async with session.post(
-                    f"{BACKEND_URL}/checker/",
-                    json={
-                        "username": username
-                    }
-                ) as response:
-                    if response.status != 200:
-                        logger.error(
-                            "Checker HTTP %s for @%s",
-                            response.status,
-                            username
-                        )
-                        continue
-                    result = await response.json()
-                    if result:
-                        results.append(
-                            result
-                        )
-            except asyncio.TimeoutError:
-                logger.error(
-                    "Checker timeout for @%s",
-                    username
-                )
-            except aiohttp.ClientError as exc:
-                logger.error(
-                    "Checker connection error for @%s: %s",
-                    username,
-                    exc
-                )
-            except Exception as exc:
-                logger.exception(
-                    "Checker error for @%s: %s",
-                    username,
-                    exc
-                )
-    return results
+            )
+
+    # Убираем дубликаты,
+    # сохраняя порядок.
+    return list(
+        dict.fromkeys(
+            normalized
+        )
+    )
