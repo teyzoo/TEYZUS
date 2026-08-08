@@ -1,90 +1,84 @@
+import asyncio
+import os
+
+import uvicorn
 from fastapi import FastAPI
 
-from app.config import settings
-from app.database import Base, engine
-
-
-from app.users.router import router as users_router
-from app.referrals.router import router as referrals_router
-from app.premium.router import router as premium_router
-from app.search.router import router as search_router
-from app.limits.router import router as limits_router
-from app.ai.router import router as ai_router
-from app.pricing.router import router as pricing_router
-from app.results.router import router as results_router
-from app.generator.router import router as generator_router
-
-from app.checker.router import router as checker_router
-
-
-
-Base.metadata.create_all(
-    bind=engine
+from app.checker.session_router import (
+    router as session_router
 )
 
+
+# ============================================================
+# FASTAPI
+# ============================================================
 
 app = FastAPI(
-    title=settings.APP_NAME,
-    version=settings.VERSION
+    title="TEYZUS",
+    version="1.0.0"
 )
 
 
+# ============================================================
+# ROUTERS
+# ============================================================
 
 app.include_router(
-    users_router
-)
-
-app.include_router(
-    referrals_router
-)
-
-app.include_router(
-    premium_router
-)
-
-app.include_router(
-    search_router
-)
-
-app.include_router(
-    limits_router
-)
-
-app.include_router(
-    ai_router
-)
-
-app.include_router(
-    pricing_router
-)
-
-app.include_router(
-    results_router
-)
-
-app.include_router(
-    generator_router
-)
-
-app.include_router(
-    checker_router
+    session_router
 )
 
 
+# ============================================================
+# HEALTH
+# ============================================================
 
 @app.get("/")
-def home():
-
+async def root():
     return {
-        "project": "TEYZUS",
-        "status": "online",
-        "modules": [
-            "users",
-            "premium",
-            "search",
-            "generator",
-            "checker",
-            "ai",
-            "pricing"
-        ]
+        "status": "ok",
+        "service": "TEYZUS"
     }
+
+
+@app.get("/health")
+async def health():
+    return {
+        "status": "healthy"
+    }
+
+
+# ============================================================
+# SERVER
+# ============================================================
+
+async def main():
+
+    port = int(
+        os.getenv(
+            "PORT",
+            "8000"
+        )
+    )
+
+    config = uvicorn.Config(
+        app=app,
+        host="0.0.0.0",
+        port=port,
+        log_level="info"
+    )
+
+    server = uvicorn.Server(
+        config
+    )
+
+    await server.serve()
+
+
+# ============================================================
+# ENTRY POINT
+# ============================================================
+
+if __name__ == "__main__":
+    asyncio.run(
+        main()
+    )
