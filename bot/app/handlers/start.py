@@ -8,33 +8,31 @@ router = Router()
 async def start_handler(
     message: Message
 ):
+    """
+    Обработка /start.
+    Регистрация пользователя в backend
+    не должна ломать ответ Telegram-бота.
+    """
+    user = message.from_user
     user_data = {
-        "telegram_id": str(
-            message.from_user.id
-        ),
-        "username": (
-            message.from_user.username
-        ),
-        "first_name": (
-            message.from_user.first_name
-        ),
-        "language": (
-            message.from_user.language_code
-        )
+        "telegram_id": str(user.id),
+        "username": user.username,
+        "first_name": user.first_name,
+        "language": user.language_code,
     }
-    # Ошибка backend не должна
-    # ломать приветствие бота.
-    await create_user(
-        user_data
-    )
+    # Backend может быть временно недоступен.
+    # Это НЕ должно мешать /start.
+    try:
+        await create_user(
+            user_data
+        )
+    except Exception:
+        pass
     await message.answer(
         "🚀 Добро пожаловать в TEYZUS!\n\n"
-        "Здесь ты можешь находить "
-        "интересные Telegram username, "
-        "проверять их доступность и "
-        "оценивать найденные варианты.\n\n"
-        "🏪 В Marketplace можно будет "
-        "найти и продать username.\n\n"
-        "Выбери нужный раздел ниже:",
-        reply_markup=main_menu()
+        "Здесь ты можешь найти интересные Telegram username, "
+        "проверить их доступность и в дальнейшем работать с ними "
+        "через Marketplace.\n\n"
+        "Выбери нужный раздел ниже 👇",
+        reply_markup=main_menu(),
     )
