@@ -1,7 +1,7 @@
-from typing import Dict, Any
-import aiohttp
 import asyncio
 import re
+from typing import Dict, Any
+import aiohttp
 USERNAME_RE = re.compile(
     r"^[A-Za-z][A-Za-z0-9_]{4,31}$"
 )
@@ -12,7 +12,6 @@ async def check_telegram(
         str(username)
         .strip()
         .lstrip("@")
-        .lower()
     )
     if not username:
         return {
@@ -21,10 +20,6 @@ async def check_telegram(
             "checked": False,
             "error": "username_required"
         }
-    # Telegram username:
-    # 5–32 символа
-    # начинается с буквы
-    # A-Z / 0-9 / _
     if not USERNAME_RE.fullmatch(
         username
     ):
@@ -33,14 +28,13 @@ async def check_telegram(
             "taken": True,
             "checked": True,
             "valid": False,
-            "error": "invalid_telegram_username"
+            "error": "invalid_username"
         }
-    url = f"https://t.me/{username}"
+    url = (
+        f"https://t.me/{username}"
+    )
     timeout = aiohttp.ClientTimeout(
-        total=3,
-        connect=1,
-        sock_connect=1,
-        sock_read=2
+        total=3
     )
     try:
         async with aiohttp.ClientSession(
@@ -56,39 +50,34 @@ async def check_telegram(
                 url,
                 allow_redirects=True
             ) as response:
-                status = response.status
-                # Страница username существует.
-                if status == 200:
-                    return {
-                        "username": username,
-                        "taken": True,
-                        "checked": True,
-                        "valid": True,
-                        "status": status
-                    }
-                # Telegram не нашёл публичный username.
-                if status == 404:
+                if response.status == 404:
                     return {
                         "username": username,
                         "taken": False,
                         "checked": True,
                         "valid": True,
-                        "status": status
+                        "status": 404
+                    }
+                if response.status == 200:
+                    return {
+                        "username": username,
+                        "taken": True,
+                        "checked": True,
+                        "valid": True,
+                        "status": 200
                     }
                 return {
                     "username": username,
                     "taken": None,
                     "checked": False,
                     "valid": True,
-                    "status": status,
-                    "error": "unknown_http_status"
+                    "status": response.status
                 }
     except asyncio.TimeoutError:
         return {
             "username": username,
             "taken": None,
             "checked": False,
-            "valid": True,
             "error": "timeout"
         }
     except aiohttp.ClientError as exc:
@@ -96,7 +85,6 @@ async def check_telegram(
             "username": username,
             "taken": None,
             "checked": False,
-            "valid": True,
             "error": str(exc)
         }
     except Exception as exc:
@@ -104,6 +92,5 @@ async def check_telegram(
             "username": username,
             "taken": None,
             "checked": False,
-            "valid": True,
             "error": str(exc)
         }
