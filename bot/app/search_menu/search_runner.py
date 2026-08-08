@@ -8,16 +8,7 @@ async def run_search(
 ) -> List[str]:
     """
     Запускает генерацию username через backend.
-    Backend возвращает:
-        {
-            "results": [...]
-        }
-    Возвращаем:
-        [
-            "username1",
-            "username2",
-            ...
-        ]
+    Возвращает список username.
     """
     result = await generate_usernames(
         length=length,
@@ -28,9 +19,16 @@ async def run_search(
     if isinstance(result, list):
         usernames = result
     elif isinstance(result, dict):
+        # Backend сейчас возвращает:
+        # {
+        #     "results": [...]
+        # }
         usernames = result.get(
             "results",
-            []
+            result.get(
+                "usernames",
+                []
+            )
         )
     else:
         return []
@@ -45,4 +43,8 @@ async def run_search(
             normalized.append(
                 username
             )
-    return normalized
+    return list(
+        dict.fromkeys(
+            normalized
+        )
+    )
