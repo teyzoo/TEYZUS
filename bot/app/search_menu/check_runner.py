@@ -1,22 +1,72 @@
-from typing import Dict
+from typing import List, Dict, Any
+
+from app.checker.service import check_username
 
 
-async def run_check(username: str) -> Dict:
+async def run_check(
+    usernames: List[str]
+) -> List[Dict[str, Any]]:
     """
-    Запускает проверку username.
+    Проверяет список username.
 
-    Подключаем:
+    Для каждого username запускаются:
+
     - Telegram checker
     - Fragment checker
-    - T.me checker
-    - дополнительные источники
+    - t.me checker
+
+    Возвращается список результатов.
+
+    Никакие результаты не подменяются
+    статическими значениями.
     """
 
-    result = {
-        "username": username,
-        "telegram": False,
-        "fragment": False,
-        "tme": False
-    }
+    if not usernames:
+        return []
 
-    return result
+    results = []
+
+    for username in usernames:
+
+        username = username.strip().lstrip("@")
+
+        if not username:
+            continue
+
+        try:
+            result = await check_username(
+                username
+            )
+
+            results.append(
+                result
+            )
+
+        except Exception as e:
+
+            print(
+                f"CHECK ERROR @{username}: {e}"
+            )
+
+            results.append(
+                {
+                    "username": username,
+                    "telegram": {
+                        "taken": None,
+                        "error": str(e)
+                    },
+                    "fragment": {
+                        "collectible": None,
+                        "price": None,
+                        "error": str(e)
+                    },
+                    "tme": {
+                        "available": None,
+                        "error": str(e)
+                    },
+                    "available": False,
+                    "error": str(e)
+                }
+            )
+
+    return results
