@@ -1,19 +1,20 @@
 from typing import Dict, Any
-from app.checker.telegram import (
-    check_telegram
-)
-from app.checker.fragment import (
-    check_fragment
-)
+
+from app.checker.telegram import check_telegram
+from app.checker.fragment import check_fragment
+
+
 async def check_username(
     username: str
 ) -> Dict[str, Any]:
+
     username = (
         str(username)
         .strip()
         .lstrip("@")
         .lower()
     )
+
     if not username:
         return {
             "username": "",
@@ -21,88 +22,94 @@ async def check_username(
             "checked": False,
             "status": "invalid"
         }
-    # ---------------------------------------------------------
+
+    # =========================================================
     # TELEGRAM
-    # ---------------------------------------------------------
+    # =========================================================
+
     telegram = await check_telegram(
         username
     )
+
+    # ---------------------------------------------------------
+    # TELEGRAM НЕ ДАЛ ДОСТОВЕРНЫЙ РЕЗУЛЬТАТ
+    # ---------------------------------------------------------
+
     if telegram.get("checked") is not True:
+
         return {
             "username": username,
-            "telegram": telegram,
-            "fragment": {
-                "collectible": None,
-                "price": None,
-                "checked": False
-            },
             "available": False,
             "checked": False,
-            "status": "telegram_not_checked"
-        }
-    # Username уже существует
-    if telegram.get("taken") is True:
-        return {
-            "username": username,
+            "status": "unknown",
             "telegram": telegram,
             "fragment": {
                 "collectible": None,
                 "price": None,
                 "checked": False
-            },
+            }
+        }
+
+    # ---------------------------------------------------------
+    # USERNAME ЗАНЯТ
+    # ---------------------------------------------------------
+
+    if telegram.get("taken") is True:
+
+        return {
+            "username": username,
             "available": False,
             "checked": True,
-            "status": "taken"
+            "status": "taken",
+            "telegram": telegram,
+            "fragment": {
+                "collectible": None,
+                "price": None,
+                "checked": False
+            }
         }
-    # ---------------------------------------------------------
+
+    # =========================================================
     # FRAGMENT
-    # ---------------------------------------------------------
+    # =========================================================
+
     fragment = await check_fragment(
         username
     )
-    # Пока Fragment реально не проверен —
-    # НЕ выдаём username пользователю как свободный.
+
+    # Fragment пока не подключён / не подтвердил результат.
     if fragment.get("checked") is not True:
+
         return {
             "username": username,
-            "telegram": telegram,
-            "fragment": fragment,
             "available": False,
             "checked": False,
-            "status": "fragment_not_checked"
+            "status": "unknown",
+            "telegram": telegram,
+            "fragment": fragment
         }
-    # ---------------------------------------------------------
-    # FINAL RESULT
-    # ---------------------------------------------------------
+
     collectible = fragment.get(
         "collectible"
     )
+
+    # ---------------------------------------------------------
+    # COLLECTIBLE
+    # ---------------------------------------------------------
+
     if collectible is True:
+
         return {
             "username": username,
-            "telegram": telegram,
-            "fragment": fragment,
             "available": False,
             "checked": True,
-            "status": "collectible"
-        }
-    if (
-        telegram.get("taken") is False
-        and collectible is False
-    ):
-        return {
-            "username": username,
+            "status": "collectible",
             "telegram": telegram,
-            "fragment": fragment,
-            "available": True,
-            "checked": True,
-            "status": "available"
+            "fragment": fragment
         }
-    return {
-        "username": username,
-        "telegram": telegram,
-        "fragment": fragment,
-        "available": False,
-        "checked": False,
-        "status": "unknown"
-    }
+
+    # ---------------------------------------------------------
+    # AVAILABLE
+    # ---------------------------------------------------------
+    #
+    # ВА
