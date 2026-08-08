@@ -1,12 +1,17 @@
 from typing import Dict, Any, List
-from app.checker.service import check_username
+from app.search_menu.checker_client import (
+    check_username
+)
 async def run_check(
     usernames: List[str]
 ) -> List[Dict[str, Any]]:
     """
-    Проверяет список найденных username.
-    Каждый username передаётся в checker.
-    Возвращает только результаты проверки.
+    Проверяет список username через backend.
+    Backend выполняет:
+    - Telegram checker
+    - Fragment checker
+    - t.me checker
+    Бот не импортирует backend-код напрямую.
     """
     if not usernames:
         return []
