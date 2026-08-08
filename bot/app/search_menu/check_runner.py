@@ -1,14 +1,22 @@
 import asyncio
-from typing import Dict, Any, List
+import logging
+import os
+from typing import Dict, Any
 import aiohttp
-from app.search_menu.checker_client import check_username
-# Максимальное количество одновременно выполняемых проверок.
-# Начни с 100–200 на Render.
-# Если всё стабильно — можно поднимать.
-CONCURRENCY = 200
-async def _check_one(
+logger = logging.getLogger(__name__)
+BACKEND_URL = os.getenv(
+    "BACKEND_URL",
+    "http://localhost:8000"
+).rstrip("/")
+TIMEOUT = aiohttp.ClientTimeout(
+    total=3,
+    connect=1,
+    sock_connect=1,
+    sock_read=2
+)
+async def check_username(
     username: str,
-    semaphore: asyncio.Semaphore
+    session: aiohttp.ClientSession
 ) -> Dict[str, Any] | None:
     username = (
         str(username)
@@ -18,57 +26,38 @@ async def _check_one(
     )
     if not username:
         return None
-    async with semaphore:
-        try:
-            result = await check_username(
-                username
-            )
-            if not result:
-                return None
-            return result
-        except Exception as exc:
-            return {
-                "username": username,
-                "available": False,
-                "checked": False,
-                "error": str(exc)
+    url = f"{BACKEND_URL}/checker/"
+    try:
+        async with session.post(
+            url,
+            json={
+                "username": username
             }
-async def run_check(
-    usernames: List[str]
-) -> List[Dict[str, Any]]:
-    if not usernames:
-        return []
-    # Убираем дубли.
-    normalized = list(
-        dict.fromkeys(
-            str(username)
-            .strip()
-            .lstrip("@")
-            .lower()
-            for username in usernames
-            if username
+        ) as response:
+            if response.status != 200:
+                logger.error(
+                    "Checker HTTP %s for @%s",
+                    response.status,
+                    username
+                )
+                return None
+            return await response.json()
+    except asyncio.TimeoutError:
+        logger.warning(
+            "Checker timeout for @%s",
+            username
         )
-    )
-    if not normalized:
-        return []
-    semaphore = asyncio.Semaphore(
-        CONCURRENCY
-    )
-    tasks = [
-        asyncio.create_task(
-            _check_one(
-                username,
-                semaphore
-            )
+        return None
+    except aiohttp.ClientError as exc:
+        logger.warning(
+            "Checker connection error for @%s: %s",
+            username,
+            exc
         )
-        for username in normalized
-    ]
-    results = await asyncio.gather(
-        *tasks,
-        return_exceptions=False
-    )
-    return [
-        result
-        for result in results
-        if result is not None
-    ]
+        return None
+    except Exception as exc:
+        logger.exception(
+            "Checker error for @%s",
+            username
+        )
+        return None
