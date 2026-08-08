@@ -1,5 +1,6 @@
-import os
 import asyncio
+import os
+import re
 from typing import Dict, Any
 
 import aiohttp
@@ -7,8 +8,10 @@ import aiohttp
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 
-TELEGRAM_API = (
-    "https://api.telegram.org"
+TELEGRAM_API = "https://api.telegram.org"
+
+USERNAME_RE = re.compile(
+    r"^[a-zA-Z][a-zA-Z0-9_]{4,31}$"
 )
 
 
@@ -23,19 +26,39 @@ async def check_telegram(
         .lower()
     )
 
+    # ---------------------------------------------------------
+    # BASIC VALIDATION
+    # ---------------------------------------------------------
+
     if not username:
         return {
             "username": "",
             "taken": None,
             "checked": False,
-            "error": "username_required"
+            "valid": False,
+            "status": "invalid"
         }
+
+    if not USERNAME_RE.fullmatch(username):
+        return {
+            "username": username,
+            "taken": None,
+            "checked": True,
+            "valid": False,
+            "status": "invalid_username"
+        }
+
+    # ---------------------------------------------------------
+    # BOT TOKEN
+    # ---------------------------------------------------------
 
     if not BOT_TOKEN:
         return {
             "username": username,
             "taken": None,
             "checked": False,
+            "valid": True,
+            "status": "not_checked",
             "error": "bot_token_missing"
         }
 
@@ -45,7 +68,7 @@ async def check_telegram(
     )
 
     timeout = aiohttp.ClientTimeout(
-        total=2
+        total=3
     )
 
     try:
@@ -65,16 +88,15 @@ async def check_telegram(
                     content_type=None
                 )
 
-                if response.status != 200:
-                    return {
-                        "username": username,
-                        "taken": None,
-                        "checked": False,
-                        "status": response.status,
-                        "error": "telegram_api_error"
-                    }
+                # -------------------------------------------------
+                # TELEGRAM FOUND OBJECT
+                # -------------------------------------------------
 
-                if data.get("ok") is True:
+                if (
+                    response.status == 200
+                    and data.get("ok") is True
+                ):
+
                     result = data.get(
                         "result",
                         {}
@@ -85,8 +107,29 @@ async def check_telegram(
                         "taken": True,
                         "checked": True,
                         "valid": True,
+                        "status": "taken",
                         "type": result.get("type")
                     }
+
+                # -------------------------------------------------
+                # NOT FOUND
+                # -------------------------------------------------
+                #
+                # ВАЖНО:
+                #
+                # Bot API не может доказать,
+                # что username свободен.
+                #
+                # Поэтому НЕ:
+                #
+                # taken=False
+                #
+                # а:
+                #
+                # taken=None
+                #
+                # Это защищает от ложных результатов.
+                # -------------------------------------------------
 
                 error_code = data.get(
                     "error_code"
@@ -97,31 +140,32 @@ async def check_telegram(
                     ""
                 )
 
-                # Chat not found.
-                #
-                # Это означает, что Telegram Bot API
-                # не нашёл объект с таким username.
-                #
-                # Но НЕ считаем это автоматически
-                # 100% свободным username.
                 if (
                     error_code == 400
-                    and "not found" in description.lower()
+                    and "not found"
+                    in description.lower()
                 ):
+
                     return {
                         "username": username,
-                        "taken": False,
-                        "checked": True,
+                        "taken": None,
+                        "checked": False,
                         "valid": True,
-                        "status": 404
+                        "status": "unknown",
+                        "error": "telegram_bot_api_cannot_confirm_availability"
                     }
+
+                # -------------------------------------------------
+                # OTHER TELEGRAM ERROR
+                # -------------------------------------------------
 
                 return {
                     "username": username,
                     "taken": None,
                     "checked": False,
                     "valid": True,
-                    "error": description
+                    "status": "unknown",
+                    "error": description or "telegram_api_error"
                 }
 
     except asyncio.TimeoutError:
@@ -130,6 +174,8 @@ async def check_telegram(
             "username": username,
             "taken": None,
             "checked": False,
+            "valid": True,
+            "status": "unknown",
             "error": "timeout"
         }
 
@@ -139,6 +185,8 @@ async def check_telegram(
             "username": username,
             "taken": None,
             "checked": False,
+            "valid": True,
+            "status": "unknown",
             "error": str(exc)
         }
 
@@ -148,5 +196,7 @@ async def check_telegram(
             "username": username,
             "taken": None,
             "checked": False,
+            "valid": True,
+            "status": "unknown",
             "error": str(exc)
         }
