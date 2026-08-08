@@ -32,17 +32,14 @@ async def check_username(
     telegram = await check_telegram(
         username
     )
-    fragment = await check_fragment(
+    tme = await check_tme(
         username
     )
-    tme = await check_tme(
+    fragment = await check_fragment(
         username
     )
     telegram_checked = (
         telegram.get("checked") is True
-    )
-    fragment_checked = (
-        fragment.get("checked") is True
     )
     tme_checked = (
         tme.get("checked") is True
@@ -50,28 +47,35 @@ async def check_username(
     telegram_free = (
         telegram.get("taken") is False
     )
-    fragment_free = (
-        fragment.get("collectible") is False
-    )
     tme_free = (
         tme.get("available") is True
     )
-    checked = (
-        telegram_checked
-        and fragment_checked
-        and tme_checked
+    # Fragment пока не блокирует результат,
+    # потому что реальной проверки Fragment API
+    # ещё нет.
+    fragment_checked = (
+        fragment.get("checked") is True
+    )
+    fragment_collectible = (
+        fragment.get("collectible") is True
     )
     available = (
-        checked
+        telegram_checked
+        and tme_checked
         and telegram_free
-        and fragment_free
         and tme_free
+        and not fragment_collectible
+    )
+    checked = (
+        telegram_checked
+        and tme_checked
     )
     return {
         "username": username,
         "telegram": telegram,
-        "fragment": fragment,
         "tme": tme,
+        "fragment": fragment,
         "available": available,
-        "checked": checked
+        "checked": checked,
+        "fragment_checked": fragment_checked
     }
