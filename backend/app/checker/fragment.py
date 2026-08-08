@@ -2,13 +2,6 @@ from typing import Dict, Any
 async def check_fragment(
     username: str
 ) -> Dict[str, Any]:
-    """
-    Проверка username со стороны Fragment.
-    Пока реальная интеграция с Fragment API не подключена,
-    мы НЕ утверждаем, что username collectible.
-    Это важно, чтобы заглушка не выдавала
-    ложные результаты пользователю.
-    """
     username = (
         str(username)
         .strip()
@@ -16,14 +9,16 @@ async def check_fragment(
     )
     if not username:
         return {
-            "collectible": False,
+            "username": "",
+            "collectible": None,
             "price": None,
             "checked": False,
             "error": "username_required"
         }
     return {
         "username": username,
-        "collectible": False,
+        "collectible": None,
         "price": None,
-        "checked": False
+        "checked": False,
+        "error": "fragment_not_connected"
     }
