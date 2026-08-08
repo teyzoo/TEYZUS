@@ -1,31 +1,47 @@
-from typing import Dict, Any
-from app.checker.telegram import check_telegram
-from app.checker.fragment import check_fragment
-from app.checker.tme import check_tme
-async def run_check(username: str) -> Dict[str, Any]:
+from typing import Dict, Any, List
+from app.checker.service import check_username
+async def run_check(
+    usernames: List[str]
+) -> List[Dict[str, Any]]:
     """
-    Полная проверка username.
-    Проверяет:
-    - Telegram
-    - Fragment
-    - t.me
-    ВАЖНО:
-    Здесь не ставим результат вручную в False/True.
-    Используем реальные checker-функции.
+    Проверяет список найденных username.
+    Каждый username передаётся в checker.
+    Возвращает только результаты проверки.
     """
-    username = username.strip().lstrip("@")
-    telegram = await check_telegram(username)
-    fragment = await check_fragment(username)
-    tme = await check_tme(username)
-    available = (
-        not telegram.get("taken", False)
-        and not fragment.get("collectible", False)
-        and tme.get("available", False)
-    )
-    return {
-        "username": username,
-        "telegram": telegram,
-        "fragment": fragment,
-        "tme": tme,
-        "available": available
-    }
+    if not usernames:
+        return []
+    results = []
+    for username in usernames:
+        username = str(
+            username
+        ).strip().lstrip("@")
+        if not username:
+            continue
+        try:
+            result = await check_username(
+                username
+            )
+            if result:
+                results.append(
+                    result
+                )
+        except Exception as exc:
+            results.append(
+                {
+                    "username": username,
+                    "available": False,
+                    "telegram": {
+                        "taken": True,
+                        "error": str(exc)
+                    },
+                    "fragment": {
+                        "collectible": False,
+                        "price": None
+                    },
+                    "tme": {
+                        "available": False
+                    },
+                    "error": str(exc)
+                }
+            )
+    return results
